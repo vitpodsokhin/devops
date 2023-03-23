@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 
+print_usage() {
+    cat <<EOF
+  minago.sh - Find files modified in the last N minutes.
+  
+    Usage: minago.sh [MINUTES] [PATH] [noxdev]
+  
+      MINUTES - Number of minutes to search for files. Default: 1
+      PATH - The directory to search. Default: ./
+      noxdev - Do not use -xdev. 
+  
+    Examples:
+      minago.sh 5
+      minago.sh noxdev 5
+      minago.sh 5 ~/Desktop/
+      minago.sh 5 ~/Desktop/ noxdev
+EOF
+}
+
 parse_args() {
     local minutes=1
     local path="."
@@ -25,26 +43,8 @@ minago() {
     find_files $@
 }
 
-show_help() {
-    cat <<EOF
-  minago.sh - Find files modified in the last N minutes.
-  
-    Usage: minago.sh [MINUTES] [PATH] [noxdev]
-  
-      MINUTES - Number of minutes to search for files. Default: 1
-      PATH - The directory to search. Default: ./
-      noxdev - Do not use -xdev. 
-  
-    Examples:
-      minago.sh 5
-      minago.sh noxdev 5
-      minago.sh 5 ~/Desktop/
-      minago.sh 5 ~/Desktop/ noxdev
-EOF
-}
-
 if [[ $1 == "-h" || $1 == "--help" || $1 == "--usage" ]]; then
-    show_help
+    print_usage
 else
     minago "$@"
 fi
