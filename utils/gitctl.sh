@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
 
 print_usage() {
-    cat <<-END
-    Usage: $0 [directory1] [directory2] ...
-    
-    Update all Git repositories in the specified directories and their subdirectories.
-    If no directories are specified, search for Git repositories in the current working directory and its subdirectories.
-    
-    Options:
-      --help  Show this help message and exit
-END
+    printf "Usage: %s [directory1] [directory2] ...\n\n" "$0"
+    printf "Update all Git repositories in the specified directories and their subdirectories.\n"
+    printf "If no directories are specified, search for Git repositories in the current working directory and its subdirectories.\n\n"
+    printf "Options:\n"
+    printf "  --help  Show this help message and exit\n"
 }
 
 parse_args() {
@@ -24,19 +20,23 @@ parse_args() {
 }
 
 is_git_repo() {
-    git -C "$1" rev-parse &>/dev/null
+    if git -C "$1" rev-parse &>/dev/null; then
+        return 0
+    else
+        printf "Error: %s is not a Git repository\n" "$1"
+        return 1
+    fi
 }
 
 find_repos() {
-    repos=$(find $directories -type d -exec test -d '{}/.git' ';' -print)
+    repos=$(find "$directories" -type d -exec test -d '{}/.git' ';' -print)
 
     if [[ -z $repos ]]; then
-        echo "No Git repositories found"
+        printf "No Git repositories found\n"
         exit 0
     fi
 
-    echo "Found Git repositories:"
-    echo "$repos"
+    printf "Found Git repositories:\n%s\n" "$repos"
 }
 
 confirm_and_update() {
@@ -44,13 +44,15 @@ confirm_and_update() {
     if [[ "$response" =~ ^[Yy]$ ]]; then
         for repo in $repos; do
             if is_git_repo "$repo"; then
-                echo "Updating $repo ..."
-                git -C "$repo" pull
+                printf "Updating %s ...\n" "$repo"
+                if ! git -C "$repo" pull; then
+                    printf "Error updating %s\n" "$repo"
+                fi
             fi
         done
-        echo "All Git repositories updated successfully"
+        printf "All Git repositories updated successfully\n"
     else
-        echo "Aborting update"
+        printf "Aborting update\n"
         exit 0
     fi
 }
