@@ -8,6 +8,7 @@ The repository currently includes the following scripts:
 
 - `minago.sh`: A script to find files modified in the last N minutes.
 - `gitctl.sh`: A script to update all Git repositories in the specified directories and their subdirectories.
+- `vpnctl.py`: A Python script to control a VPN connection. It provides a simple command-line interface for managing configurations virtual private networks.
 
 ## Requirements
 
