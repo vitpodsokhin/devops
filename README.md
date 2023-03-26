@@ -16,6 +16,7 @@ The scripts in this repository require the following:
 
 - Bash shell
 - Git (for `gitctl.sh`)
+- Python3 (for `vpnctl.py`)
 
 ## Usage
 
