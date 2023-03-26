@@ -137,12 +137,15 @@ def main():
     vpn0 = VPN(name='tokio', address_space=ipaddress.ip_network('10.255.0.0/28'), number_of_peers=8)
     print('Printing vpn0:\n',vpn0)
     print('Printing vpn0\'s dictionary:\n', vpn0.__dict__)
-    pprint('Pretty printing the same:\n', vpn0.__dict__)
+    print('Pretty printing the same:')
+    pprint(vpn0.__dict__)
     vpn0.create_peer()
-    pprint('Pretty printing the same after creating new peer:\n', vpn0.__dict__)
+    print('Pretty printing the same after creating new peer:')
+    pprint(vpn0.__dict__)
     vpn0.delete_peer(ipaddress.IPv4Address('10.255.0.1'))
     vpn0.create_peer('Alice')
-    pprint('Doing the same as before but after deleting and creating one peer:\n', vpn0.__dict__)
+    print('Doing the same as before but after deleting and creating one peer:')
+    pprint(vpn0.__dict__)
 
 
 if __name__ == '__main__':
