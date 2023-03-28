@@ -2,13 +2,26 @@
 
 import ipaddress
 import random
+import socket
+import struct
+import base64
 
+# Data types
 from ipaddress import IPv4Network, IPv4Address
 from typing import Optional, Union
 
-import socket
-import struct
+# Cryprographic methods
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
+# Exception handling classes
+class NoAvailableAddressesError(Exception):
+    pass
+
+class PeerNotFoundError(Exception):
+    pass
+
+# Optional for testing purposes
 class RandomGenerator:
     NAMES = ['Alice', 'Bob', 'Charlie', 'David', 'Eve', 'Frank', 'Grace', 'Heidi', 'Ivan', 'Judy', 'Mallory', 'Oscar', 'Peggy', 'Quincy', 'Ralph', 'Sybil', 'Trent', 'Ursula', 'Victor', 'Wendy', 'Xavier', 'Yvonne', 'Zoe']
     SYSTEMS = ['Windows', 'MacOS', 'Linux', 'BolgenOS', 'Solaris']
@@ -28,18 +41,9 @@ class RandomGenerator:
     
     @staticmethod
     def get_random_address() -> str:
-        """
-        Returns a random IPv4 address in the form of a string.
-        """
         #TODO Use `ipaddress` library instead
         return socket.inet_ntoa(struct.pack('>I', random.randint(0, 0xffffffff)))
     
-class NoAvailableAddressesError(Exception):
-    pass
-
-class PeerNotFoundError(Exception):
-    pass
-
 
 class User:
     def __init__(self, name: str = None):
@@ -47,6 +51,33 @@ class User:
 
     def __repr__(self) -> str:
         return f"User(name='{self.name}')"
+
+
+class WireGuard:
+    @staticmethod
+    def genkey() -> str:
+        return base64.b64encode(
+            X25519PrivateKey.generate().private_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PrivateFormat.Raw,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+        ).decode()
+
+    @staticmethod
+    def pubkey(privkey: str) -> str:
+        return base64.b64encode(
+            X25519PrivateKey.from_private_bytes(base64.b64decode(privkey.encode()))
+            .public_key()
+            .public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw,
+            )
+        ).decode()
+
+    @staticmethod
+    def genpsk() -> str:
+        return WireGuard.genkey()
 
 
 class Device:
@@ -101,10 +132,13 @@ class VPN:
             return None
         return peer
 
-    def create_peers(self, number_of_peers) -> None:
+    def create_peers(self, number_of_peers: int) -> None:
         if self.number_of_available_addresses < number_of_peers:
-            raise NoAvailableAddressesError(f'Not enough addresses in pool.\nOnly {self.number_of_available_addresses} address{"es" if self.number_of_available_addresses != 1 else ""} {"is" if self.number_of_available_addresses == 1 else "are"} available for allocation.')
-        for i in range(number_of_peers):
+            plural_suffix = "es" if self.number_of_available_addresses != 1 else ""
+            verb_suffix = "is" if self.number_of_available_addresses == 1 else "are"
+            raise NoAvailableAddressesError(f"Not enough addresses in pool. Only {self.number_of_available_addresses} address{plural_suffix} {verb_suffix} available for allocation.")
+        
+        for _ in range(number_of_peers):
             self._create_peer()
 
     def delete_peer(self, identifier) -> bool:
