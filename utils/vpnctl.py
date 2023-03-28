@@ -5,14 +5,11 @@ import random
 import socket
 import struct
 import base64
+import subprocess
 
 # Data types
 from ipaddress import IPv4Network, IPv4Address
 from typing import Optional, Union
-
-# Cryprographic methods
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
 # Exception handling classes
 class NoAvailableAddressesError(Exception):
@@ -53,31 +50,53 @@ class User:
         return f"User(name='{self.name}')"
 
 
-class WireGuard:
+try:
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+    HAS_CRYPTOGRAPHY = True
+except ImportError:
+    HAS_CRYPTOGRAPHY = False
+
+class X25519:
+    if HAS_CRYPTOGRAPHY:
+        impl = "cryptography"
+    else:
+        impl = "wg"
+
     @staticmethod
     def genkey() -> str:
-        return base64.b64encode(
-            X25519PrivateKey.generate().private_bytes(
+        if X25519.impl == "cryptography":
+            private_key = X25519PrivateKey.generate()
+            private_key_bytes = private_key.private_bytes(
                 encoding=serialization.Encoding.Raw,
                 format=serialization.PrivateFormat.Raw,
                 encryption_algorithm=serialization.NoEncryption(),
             )
-        ).decode()
+            return base64.b64encode(private_key_bytes).decode()
+
+        else:
+            private_key = subprocess.check_output(["wg", "genkey"]).strip()
+            return base64.b64encode(private_key).decode()
 
     @staticmethod
     def pubkey(privkey: str) -> str:
-        return base64.b64encode(
-            X25519PrivateKey.from_private_bytes(base64.b64decode(privkey.encode()))
-            .public_key()
-            .public_bytes(
+        if X25519.impl == "cryptography":
+            private_key_bytes = base64.b64decode(privkey.encode())
+            private_key = X25519PrivateKey.from_private_bytes(private_key_bytes)
+            public_key_bytes = private_key.public_key().public_bytes(
                 encoding=serialization.Encoding.Raw,
                 format=serialization.PublicFormat.Raw,
             )
-        ).decode()
+            return base64.b64encode(public_key_bytes).decode()
+
+        else:
+            private_key_bytes = base64.b64decode(privkey.encode())
+            public_key = subprocess.check_output(["wg", "pubkey"], input=private_key_bytes).strip()
+            return base64.b64encode(public_key).decode()
 
     @staticmethod
     def genpsk() -> str:
-        return WireGuard.genkey()
+        return X25519.genkey()
 
 
 class Device:
@@ -85,13 +104,16 @@ class Device:
         self.os = os or RandomGenerator.get_random_system()
 
 class Peer(Device):
-    def __init__(self, name: str = None, address: IPv4Address = None, **kwargs):
+    def __init__(self, name=None, address=None, key=None, pub=None, **kwargs):
         super().__init__(**kwargs)
         self.name = name or RandomGenerator.get_random_name()
         self.address = address or RandomGenerator.get_random_address()
+        self.key = key if key is not None else X25519.genkey()
+        self.pub = pub if pub is not None else X25519.pubkey(self.key)
 
     def __repr__(self) -> str:
-        return f"Peer(name='{self.name}', address='{self.address}', os='{self.os}')"
+        attrs = ['name', 'address', 'os', 'key', 'pub']
+        return f"Peer({', '.join(f'{attr}={getattr(self, attr)!r}' for attr in attrs)})"
     
 
 class VPN:
@@ -155,33 +177,63 @@ class VPN:
 
 
 #TODO Implement unittesting instead all this mess...
-def test_user_creation():
+
+from pprint import pprint
+
+def test_user_creation(pretty_print=False):
     test_user = User()
-    print("Printing user:", test_user)
-    print("Printing user's dictionary:", test_user.__dict__)
-test_user_creation()
+    print("Printing user:")
+    if pretty_print:
+        pprint(test_user)
+    else:
+        print(test_user)
+    print("Printing user's dictionary:")
+    if pretty_print:
+        pprint(test_user.__dict__)
+    else:
+        print(test_user.__dict__)
 
-def test_device_creation():
+def test_device_creation(pretty_print=False):
     test_device = Device()
-    print("Printing device:", test_device)
-    print("Printing device's dictionary:", test_device.__dict__)
-test_device_creation()
+    print("Printing device:")
+    if pretty_print:
+        pprint(test_device)
+    else:
+        print(test_device)
+    print("Printing device's dictionary:")
+    if pretty_print:
+        pprint(test_device.__dict__)
+    else:
+        print(test_device.__dict__)
 
-def test_peer_creation():
+def test_peer_creation(pretty_print=False):
     test_peer = Peer()
-    print("Printing peer:", test_peer)
-    print("Printing peer's dictionary:", test_peer.__dict__)
-test_peer_creation()
+    print("Printing peer:")
+    if pretty_print:
+        pprint(test_peer)
+    else:
+        print(test_peer)
+    print("Printing peer's dictionary:")
+    if pretty_print:
+        pprint(test_peer.__dict__)
+    else:
+        print(test_peer.__dict__)
 
-def test_vpn_creation():
+def test_vpn_creation(pretty_print=False):
     test_vpn = VPN()
-    print("Printing VPN:", test_vpn)
-    print("Printing VPN's dictionary:", test_vpn.__dict__)
-test_vpn_creation()
+    print("Printing VPN:")
+    if pretty_print:
+        pprint(test_vpn)
+    else:
+        print(test_vpn)
+    print("Printing VPN's dictionary:")
+    if pretty_print:
+        pprint(test_vpn.__dict__)
+    else:
+        print(test_vpn.__dict__)
 
 
 def test_a_ton_of_stuff_at_once():
-    from pprint import pprint
     
     vpn0 = VPN(name='tokio', address_space=ipaddress.ip_network('10.0.0.0/28'), number_of_peers=8)
 
@@ -205,4 +257,13 @@ def test_a_ton_of_stuff_at_once():
     pprint(vpn0.__dict__)
     print()
 
+
+test_user_creation(pretty_print=True)
+print()
+test_device_creation(pretty_print=True)
+print()
+test_peer_creation(pretty_print=True)
+print()
+test_vpn_creation(pretty_print=True)
+print()
 test_a_ton_of_stuff_at_once()
