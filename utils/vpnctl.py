@@ -1,4 +1,17 @@
 #!/usr/bin/env python3
+#TODO Refactor the script into a program.
+#TODO Instead of generating random IP addresses using the socket and struct modules, use the ipaddress library.
+#TODO Ensure that addresses are sorted so that the lowest addresses from the pool of available ones are allocated for new peers.
+#TODO Add error handling to the _init_address_pool() method to raise a ValueError if the address space provided is invalid.
+#TODO Add a method to allocate an IP address from the address pool to a peer, and handle the case where there are no available addresses left in the pool by raising a NoAvailableAddressesError.
+#TODO Add a method to deallocate an IP address from a peer and return it to the address pool.
+#TODO Add a method to find a peer by name and raise a PeerNotFoundError if the peer is not found.
+#TODO Improve the __repr__ method for the Peer class to include only relevant attributes.
+#TODO Add methods to the VPN class to create and delete peers.
+#TODO Add a method to get a list of all peers in the VPN.
+#TODO Add a method to get the number of available addresses in the address pool.
+#TODO Add a method to get the number of allocated addresses in the address pool.
+#TODO Improve the __repr__ method for the VPN class to include relevant information about the VPN, such as the name, address space, number of peers, and number of available addresses.
 
 import ipaddress
 import random
@@ -18,7 +31,7 @@ class NoAvailableAddressesError(Exception):
 class PeerNotFoundError(Exception):
     pass
 
-# Optional for testing purposes
+# Should be optional for testing purposes
 class RandomGenerator:
     NAMES = ['Alice', 'Bob', 'Charlie', 'David', 'Eve', 'Frank', 'Grace', 'Heidi', 'Ivan', 'Judy', 'Mallory', 'Oscar', 'Peggy', 'Quincy', 'Ralph', 'Sybil', 'Trent', 'Ursula', 'Victor', 'Wendy', 'Xavier', 'Yvonne', 'Zoe']
     SYSTEMS = ['Windows', 'MacOS', 'Linux', 'BolgenOS', 'Solaris']
@@ -42,14 +55,7 @@ class RandomGenerator:
         return socket.inet_ntoa(struct.pack('>I', random.randint(0, 0xffffffff)))
     
 
-class User:
-    def __init__(self, name: str = None):
-        self.name = name or RandomGenerator.get_random_name()
-
-    def __repr__(self) -> str:
-        return f"User(name='{self.name}')"
-
-
+# Cryptokey module
 try:
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
@@ -98,6 +104,16 @@ class X25519:
     def genpsk() -> str:
         return X25519.genkey()
 
+# End of Cryptokey module
+
+
+# Client module
+class User:
+    def __init__(self, name: str = None):
+        self.name = name or RandomGenerator.get_random_name()
+
+    def __repr__(self) -> str:
+        return f"User(name='{self.name}')"
 
 class Device:
     def __init__(self, os=None):
@@ -115,7 +131,9 @@ class Peer(Device):
         attrs = ['name', 'address', 'os', 'key', 'pub']
         return f"Peer({', '.join(f'{attr}={getattr(self, attr)!r}' for attr in attrs)})"
     
+# End of Client module
 
+# Server module
 class VPN:
     def __init__(self, name: str = None, address_space: Union[str, IPv4Network] = None, number_of_peers: int = 0):
         self.name = name or RandomGenerator.get_random_city()
@@ -175,7 +193,9 @@ class VPN:
     def __repr__(self) -> str:
         return f"VPN(name='{self.name}', address_space='{self.address_space}', number_of_peers='{self.number_of_peers}')"
 
+# End of Server module
 
+# Testing module
 #TODO Implement unittesting instead all this mess...
 
 from pprint import pprint
@@ -257,13 +277,15 @@ def test_a_ton_of_stuff_at_once():
     pprint(vpn0.__dict__)
     print()
 
+# End of Testing module
 
-test_user_creation(pretty_print=True)
-print()
-test_device_creation(pretty_print=True)
-print()
-test_peer_creation(pretty_print=True)
-print()
-test_vpn_creation(pretty_print=True)
-print()
-test_a_ton_of_stuff_at_once()
+if __name__ == '__main__':
+    test_user_creation(pretty_print=True)
+    print()
+    test_device_creation(pretty_print=True)
+    print()
+    test_peer_creation(pretty_print=True)
+    print()
+    test_vpn_creation(pretty_print=True)
+    print()
+    test_a_ton_of_stuff_at_once()
