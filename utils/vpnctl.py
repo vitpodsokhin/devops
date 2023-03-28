@@ -36,7 +36,7 @@ class RandomGenerator:
     NAMES = ['Alice', 'Bob', 'Charlie', 'David', 'Eve', 'Frank', 'Grace', 'Heidi', 'Ivan', 'Judy', 'Mallory', 'Oscar', 'Peggy', 'Quincy', 'Ralph', 'Sybil', 'Trent', 'Ursula', 'Victor', 'Wendy', 'Xavier', 'Yvonne', 'Zoe']
     SYSTEMS = ['Windows', 'MacOS', 'Linux', 'BolgenOS', 'Solaris']
     CITIES = ['Kiyv', 'New York', 'London', 'Paris', 'Tokyo', 'Beijing', 'Moscow', 'Berlin', 'Rome', 'Sydney', 'Rio de Janeiro', 'Cairo', 'Mumbai', 'Bangkok', 'Cape Town', 'Dubai', 'Toronto', 'Vancouver', 'Los Angeles', 'San Francisco', 'Chicago']
-    
+
     @staticmethod
     def get_random_name() -> str:
         return random.choice(RandomGenerator.NAMES)
@@ -177,7 +177,7 @@ class VPN:
             plural_suffix = "es" if self.number_of_available_addresses != 1 else ""
             verb_suffix = "is" if self.number_of_available_addresses == 1 else "are"
             raise NoAvailableAddressesError(f"Not enough addresses in pool. Only {self.number_of_available_addresses} address{plural_suffix} {verb_suffix} available for allocation.")
-        
+
         for _ in range(number_of_peers):
             self._create_peer()
 
