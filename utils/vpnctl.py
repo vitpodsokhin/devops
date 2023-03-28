@@ -1,108 +1,155 @@
 #!/usr/bin/env python3
 
-import random
 import ipaddress
-import uuid
-from typing import Optional
+import random
 
-class Peer:
-    #TODO Move user manipulation mechanics to a separate class
-    USER_NAMES = {
-        'male': list('Adam Benjamin Cassidy Daniel Eric Frank George Henry Isaac John Kevin Liam Myron Nicholas Oliver Patrick Quentin Robert Sulik Thomas Ulysses Vik William Xavier Yosef Zachary'.split()),
-        'female': list('Alice Beth Clair Dara Elena Fara Gera Helen Iona Jane Kate Lidya Maria Nino Olga Penelope Quinn Ruby Sophia Tessa Uma Victoria Willow Xandra Yara Zoe'.split(' '))
-    }
+from ipaddress import IPv4Network, IPv4Address
+from typing import Optional, Union
 
-    def __init__(self, name=None, address=None, endpoint=None) -> None:
-        self._id = uuid.uuid4()
-        self.name = name if name is not None else self._get_random_name()
-        self.address = None
-        if address is not None:
-            try:
-                self.address = ipaddress.ip_address(address)
-            except ValueError:
-                pass
-        self.endpoint = endpoint
+import socket
+import struct
 
-    def _get_random_name(self) -> str:
-        name_type = random.choice(['male', 'female'])
-        names = Peer.USER_NAMES[name_type]
-        if not names:
-            raise ValueError("No available names.")
-        return names.pop(random.randrange(len(names)))
+class RandomGenerator:
+    NAMES = ['Alice', 'Bob', 'Charlie', 'David', 'Eve', 'Frank', 'Grace', 'Heidi', 'Ivan', 'Judy', 'Mallory', 'Oscar', 'Peggy', 'Quincy', 'Ralph', 'Sybil', 'Trent', 'Ursula', 'Victor', 'Wendy', 'Xavier', 'Yvonne', 'Zoe']
+    SYSTEMS = ['Windows', 'MacOS', 'Linux', 'BolgenOS', 'Solaris']
+    CITIES = ['Kiyv', 'New York', 'London', 'Paris', 'Tokyo', 'Beijing', 'Moscow', 'Berlin', 'Rome', 'Sydney', 'Rio de Janeiro', 'Cairo', 'Mumbai', 'Bangkok', 'Cape Town', 'Dubai', 'Toronto', 'Vancouver', 'Los Angeles', 'San Francisco', 'Chicago']
+    
+    @staticmethod
+    def get_random_name() -> str:
+        return random.choice(RandomGenerator.NAMES)
 
-    def __repr__(self):
-        if self.address is None:
-            return f"Peer(name='{self.name}')"
-        else:
-            return f"Peer(name='{self.name}', address='{self.address}')"
+    @staticmethod
+    def get_random_system() -> str:
+        return random.choice(RandomGenerator.SYSTEMS)
+
+    @staticmethod
+    def get_random_city() -> str:
+        return random.choice(RandomGenerator.CITIES)
+    
+    @staticmethod
+    def get_random_address() -> str:
+        """
+        Returns a random IPv4 address in the form of a string.
+        """
+        #TODO Use `ipaddress` library instead
+        return socket.inet_ntoa(struct.pack('>I', random.randint(0, 0xffffffff)))
+    
+class NoAvailableAddressesError(Exception):
+    pass
+
+class PeerNotFoundError(Exception):
+    pass
+
+
+class User:
+    def __init__(self, name: str = None):
+        self.name = name or RandomGenerator.get_random_name()
+
+    def __repr__(self) -> str:
+        return f"User(name='{self.name}')"
+
+
+class Device:
+    def __init__(self, os=None):
+        self.os = os or RandomGenerator.get_random_system()
+
+class Peer(Device):
+    def __init__(self, name: str = None, address: IPv4Address = None, **kwargs):
+        super().__init__(**kwargs)
+        self.name = name or RandomGenerator.get_random_name()
+        self.address = address or RandomGenerator.get_random_address()
+
+    def __repr__(self) -> str:
+        return f"Peer(name='{self.name}', address='{self.address}', os='{self.os}')"
+    
 
 class VPN:
-    #TODO Ensure that addresses are sorted so that the lowest addresses from the pool of available ones are allocated for new peers
-    def __init__(self, name=None, address_space=None, number_of_peers=None) -> None:
-        self._id = uuid.uuid4()
-        self.name = name
+    def __init__(self, name: str = None, address_space: Union[str, IPv4Network] = None, number_of_peers: int = 0):
+        self.name = name or RandomGenerator.get_random_city()
         self.address_space = None
-        self.peers = []
         self.address_pool = []
+        self.peers = []
         self.number_of_available_addresses = 0
+        self.number_of_peers = 0
+        self._init_address_pool(address_space)
+        if number_of_peers is not None:
+            self.create_peers(number_of_peers)
 
+    #TODO Ensure that addresses are sorted so that the lowest addresses from the pool of available ones are allocated for new peers
+    def _init_address_pool(self, address_space: Union[str,IPv4Network]) -> None:
         if address_space is not None:
             try:
                 self.address_space = ipaddress.ip_network(address_space)
                 self.address_pool = list(self.address_space.hosts())
                 self.number_of_available_addresses = len(self.address_pool)
             except ValueError:
-                pass
+                raise ValueError("Invalid address space.")
 
-        if number_of_peers is not None:
-            self.create_peers(number_of_peers)
-
-    def _create_peer(self, name=None, address=None) -> Peer:
+    def _create_peer(self, **kwargs) -> Peer:
         if not self.address_pool:
-            print("No available addresses in address pool.")
-            return None
+            raise NoAvailableAddressesError("No available addresses in address pool.")
         peer_address = self.address_pool.pop(0)
         self.number_of_available_addresses -= 1
-        peer = Peer(name=name, address=peer_address)
+        peer = Peer(address=peer_address, **kwargs)
         self.peers.append(peer)
         return peer
 
-    def create_peer(self, name=None, endpoint=None) -> Optional[Peer]:
-        peer = self._create_peer(name=name)
-        if peer is None:
+    def create_peer(self, **kwargs) -> Optional[Peer]:
+        try:
+            peer = self._create_peer(**kwargs)
+        except NoAvailableAddressesError:
             return None
-        if endpoint is not None:
-            peer.endpoint = endpoint
         return peer
 
     def create_peers(self, number_of_peers) -> None:
         if self.number_of_available_addresses < number_of_peers:
-            print(f'Not enough addresses in pool.\nOnly {self.number_of_available_addresses} addresses are available for allocation.')
-            return
+            raise NoAvailableAddressesError(f'Not enough addresses in pool.\nOnly {self.number_of_available_addresses} address{"es" if self.number_of_available_addresses != 1 else ""} {"is" if self.number_of_available_addresses == 1 else "are"} available for allocation.')
         for i in range(number_of_peers):
             self._create_peer()
 
     def delete_peer(self, identifier) -> bool:
         for peer in self.peers:
-            if peer.name == identifier or peer.address == identifier or peer.endpoint == identifier:
+            if peer.name == identifier or peer.address == identifier or peer.os == identifier:
                 self.peers.remove(peer)
                 self.address_pool.append(peer.address)
                 self.number_of_available_addresses += 1
                 return True
-        print("Peer not found.")
-        return False
+        raise PeerNotFoundError(f"Peer with identifier {identifier} not found.")
 
-    def __repr__(self):
-        if self.address_space:
-            return f"VPN(name='{self.name}', address_space='{self.address_space}')"
-        else:
-            return f"VPN(name='{self.name}')"
+    def __repr__(self) -> str:
+        return f"VPN(name='{self.name}', address_space='{self.address_space}', number_of_peers='{self.number_of_peers}')"
 
 
-def test():
+#TODO Implement unittesting instead all this mess...
+def test_user_creation():
+    test_user = User()
+    print("Printing user:", test_user)
+    print("Printing user's dictionary:", test_user.__dict__)
+test_user_creation()
+
+def test_device_creation():
+    test_device = Device()
+    print("Printing device:", test_device)
+    print("Printing device's dictionary:", test_device.__dict__)
+test_device_creation()
+
+def test_peer_creation():
+    test_peer = Peer()
+    print("Printing peer:", test_peer)
+    print("Printing peer's dictionary:", test_peer.__dict__)
+test_peer_creation()
+
+def test_vpn_creation():
+    test_vpn = VPN()
+    print("Printing VPN:", test_vpn)
+    print("Printing VPN's dictionary:", test_vpn.__dict__)
+test_vpn_creation()
+
+
+def test_a_ton_of_stuff_at_once():
     from pprint import pprint
     
-    vpn0 = VPN(name='tokio', address_space=ipaddress.ip_network('10.255.0.0/28'), number_of_peers=8)
+    vpn0 = VPN(name='tokio', address_space=ipaddress.ip_network('10.0.0.0/28'), number_of_peers=8)
 
     print('Printing vpn0:\n',vpn0, '\n')
     print('Printing vpn0\'s dictionary:\n', vpn0.__dict__, '\n')
@@ -117,12 +164,11 @@ def test():
     pprint(vpn0.__dict__)
     print()
 
-    vpn0.delete_peer(ipaddress.IPv4Address('10.255.0.1'))
-    vpn0.create_peer('Alice')
+    vpn0.delete_peer(ipaddress.IPv4Address('10.0.0.1'))
+    vpn0.create_peer()
 
     print('Doing the same as before but after deleting and creating one peer:')
     pprint(vpn0.__dict__)
     print()
 
-if __name__ == '__main__':
-    test()
+test_a_ton_of_stuff_at_once()
