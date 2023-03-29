@@ -176,7 +176,10 @@ class VPN:
         if self.number_of_available_addresses < number_of_peers:
             plural_suffix = "es" if self.number_of_available_addresses != 1 else ""
             verb_suffix = "is" if self.number_of_available_addresses == 1 else "are"
-            raise NoAvailableAddressesError(f"Not enough addresses in pool. Only {self.number_of_available_addresses} address{plural_suffix} {verb_suffix} available for allocation.")
+            raise NoAvailableAddressesError(
+                f"Not enough addresses in pool. Only {self.number_of_available_addresses}"
+                f"address{plural_suffix} {verb_suffix} available for allocation."
+            )
 
         for _ in range(number_of_peers):
             self._create_peer()
