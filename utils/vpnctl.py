@@ -4,7 +4,7 @@ from __future__ import annotations
 #   the tools for address space dynamic distribution
 #   among the members of a very private net
 
-import json, sys
+import json
 
 from io import StringIO
 from configparser import ConfigParser
@@ -200,8 +200,58 @@ class VPN:
         return vpn
 
 
-def main():
+class VPNManager:
+    def __init__(self) -> None:
+        self.vpns = []
 
+    def create_vpn(self, network: str, endpoint: Optional[str] = None) -> None:
+        vpn = VPN(network=network, endpoint=endpoint)
+        self.vpns.append(vpn)
+
+    def delete_vpn(self, index: int) -> None:
+        del self.vpns[index]
+
+    def list_vpns(self) -> List[VPN]:
+        return self.vpns
+
+    def save_vpn_to_ini(self, vpn: VPN, file_path: str) -> None:
+        config = ConfigParser()
+        config.add_section('VPN')
+        config.set('VPN', 'network', str(vpn.pool.network))
+        for i, peer in enumerate(vpn.peers):
+            section_name = f'Peer{i+1}'
+            config.add_section(section_name)
+            config.set(section_name, 'address', str(peer.address))
+            if isinstance(peer, Router):
+                config.set(section_name, 'endpoint', str(peer.endpoint))
+        with open(file_path, 'w') as f:
+            config.write(f)
+
+    def load_vpn_from_ini(self, file_path: str) -> VPN:
+        config = ConfigParser()
+        config.read(file_path)
+        network = config.get('VPN', 'network')
+        vpn = VPN(network=network)
+        for section_name in config.sections():
+            if section_name != 'VPN':
+                address = config.get(section_name, 'address')
+                endpoint = config.get(section_name, 'endpoint', fallback=None)
+                vpn.add_peer(address=address, endpoint=endpoint)
+        self.vpns.append(vpn)
+
+    def save_vpn_to_json(self, vpn: VPN, file_path: str) -> None:
+        with open(file_path, 'w') as f:
+            json.dump(vpn.to_dict(), f)
+
+    def load_vpn_from_json(self, file_path: str) -> VPN:
+        with open(file_path, 'r') as f:
+            vpn_dict = json.load(f)
+            vpn = VPN.from_dict(vpn_dict)
+            self.vpns.append(vpn)
+        return vpn
+
+
+def main():
 
     vpn = VPN('10.0.0.0/23', '1.1.1.1')
     vpn.add_peer(endpoint='12.23.34.45')
