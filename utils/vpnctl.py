@@ -4,11 +4,13 @@ from __future__ import annotations
 #   the tools for address space dynamic distribution
 #   among the members of a very private net
 
-import json
+import json, sys
 
+from io import StringIO
+from configparser import ConfigParser
 from dataclasses import dataclass, field
 from ipaddress import IPv4Address, IPv4Network
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 
 @dataclass
@@ -104,9 +106,7 @@ class VPN:
     def endpoints(self) -> List[str]:
         return [str(p.endpoint) for p in self.peers if isinstance(p, Router) and p.endpoint]
 
-    def add_peer(self,
-                 address: Optional[Union[IPv4Address, str]] = None,
-                 endpoint: Optional[Union[IPv4Address, str]] = None) -> BasePeer:
+    def add_peer(self, address: Optional[Union[IPv4Address, str]] = None, endpoint: Optional[IPv4Address] = None) -> BasePeer:
         if isinstance(address, str):
             address = IPv4Address(address)
         address = self.pool.allocate_address(address)
@@ -131,10 +131,9 @@ class VPN:
         except StopIteration:
             pass
 
-
     def to_json(self) -> str:
         data = {
-            'network': self.pool.network.exploded,
+            'network': str(self.pool.network),
             'peers': [],
         }
         for peer in self.peers:
@@ -153,7 +152,6 @@ class VPN:
             data['peers'].append(peer_data)
         return json.dumps(data)
 
-
     @classmethod
     def from_json(cls, json_str: str) -> 'VPN':
         data = json.loads(json_str)
@@ -170,27 +168,35 @@ class VPN:
         return vpn
 
 
-    def to_config(self) -> Dict[str, Any]:
-        config = {
-            'network': str(self.pool.network),
-            'peers': [],
-        }
-        for peer in self.peers:
-            peer_config = {'address': str(peer.address)}
+    def print_config(self, file_path: Optional[str] = None) -> Optional[str]:
+        config = ConfigParser()
+        config.add_section('VPN')
+        config.set('VPN', 'network', str(self.pool.network))
+        for i, peer in enumerate(self.peers):
+            section_name = f'Peer{i+1}'
+            config.add_section(section_name)
+            config.set(section_name, 'address', str(peer.address))
             if isinstance(peer, Router):
-                peer_config['endpoint'] = str(peer.endpoint)
-            config['peers'].append(peer_config)
-        return config
-
+                config.set(section_name, 'endpoint', str(peer.endpoint))
+        if file_path is not None:
+            with open(file_path, 'w') as f:
+                config.write(f)
+        else:
+            output = StringIO()
+            config.write(output)
+            return output.getvalue()
 
     @classmethod
-    def from_config(cls, config: Dict[str, Any]) -> 'VPN':
-        network = IPv4Network(config['network'])
+    def from_config(cls, config_str: str) -> 'VPN':
+        config = ConfigParser()
+        config.read_string(config_str)
+        network = IPv4Network(config.get('VPN', 'network'))
         vpn = cls(network=network)
-        for peer_config in config['peers']:
-            address = IPv4Address(peer_config['address'])
-            endpoint = peer_config.get('endpoint')
-            vpn.add_peer(address=address, endpoint=endpoint)
+        for section_name in config.sections():
+            if section_name != 'VPN':
+                address = IPv4Address(config.get(section_name, 'address'))
+                endpoint = config.get(section_name, 'endpoint', fallback=None)
+                vpn.add_peer(address=address, endpoint=endpoint)
         return vpn
 
 
