@@ -1,14 +1,10 @@
-# Champion's debug session setup
-
-from pprint import pprint
-import gc, inspect
-
+from __future__ import annotations
 
 # This funky stuff is gonna actualy provide
-# the tools for address space dynamic distribution
-# among the members of a very private net
+#   the tools for address space dynamic distribution
+#   among the members of a very private net
 
-from __future__ import annotations
+import json
 
 from dataclasses import dataclass, field
 from ipaddress import IPv4Address, IPv4Network
@@ -25,6 +21,8 @@ class BasePeer:
     def __repr__(self) -> str:
         if self.is_router:
             return f"Router(address='{self.address}', endpoint='{self.endpoint}', vpn={self.vpn.pool.network.exploded})"
+        elif self.vpn:
+            return f"Peer(address='{self.address}')"
         else:
             return f"Peer(address='{self.address}', vpn={self.vpn.pool.network.exploded})"
 
@@ -94,7 +92,7 @@ class VPN:
         self.pool = Pool(network)
         self.peers = []
         if endpoint:
-            self.add_peer(endpoint)
+            self.add_peer(endpoint=endpoint)
 
     def __repr__(self) -> str:
         return (
@@ -130,3 +128,57 @@ class VPN:
                 self.pool.unallocate_address(peer.address)
         except StopIteration:
             pass
+
+
+    def to_json(self) -> str:
+        data = {
+            'network': self.pool.network.exploded,
+            'peers': [],
+        }
+        for peer in self.peers:
+            if isinstance(peer, Router):
+                peer_data = {
+                    'type': 'router',
+                    'address': str(peer.address),
+                    'endpoint': str(peer.endpoint),
+                    'vpn_pool_network': str(peer.vpn.pool.network),
+                }
+            else:
+                peer_data = {
+                    'type': 'peer',
+                    'address': str(peer.address),
+                }
+            data['peers'].append(peer_data)
+        return json.dumps(data)
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'VPN':
+        data = json.loads(json_str)
+        network = data.get('network')
+        vpn = cls(network=network)
+        for peer_data in data['peers']:
+            if peer_data['type'] == 'router':
+                address = IPv4Address(peer_data['address'])
+                endpoint = IPv4Address(peer_data['endpoint'])
+                vpn.add_peer(address=address, endpoint=endpoint)
+            else:
+                address = IPv4Address(peer_data['address'])
+                vpn.add_peer(address=address)
+        return vpn
+
+
+def main():
+
+
+    vpn = VPN('10.0.0.0/23', '1.1.1.1')
+    vpn.add_peer(endpoint='12.23.34.45')
+
+    # print('  ... Testing large allocations')
+    for _ in range(16):
+        vpn.add_peer()
+
+    vpn_clone = VPN.from_json(vpn.to_json())
+    print(vpn_clone.to_json())
+
+if __name__ == '__main__':
+    main()
