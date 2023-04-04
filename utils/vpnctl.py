@@ -8,7 +8,7 @@ import json
 
 from dataclasses import dataclass, field
 from ipaddress import IPv4Address, IPv4Network
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 
 @dataclass
@@ -104,7 +104,9 @@ class VPN:
     def endpoints(self) -> List[str]:
         return [str(p.endpoint) for p in self.peers if isinstance(p, Router) and p.endpoint]
 
-    def add_peer(self, address: Optional[Union[IPv4Address, str]] = None, endpoint: Optional[IPv4Address] = None) -> BasePeer:
+    def add_peer(self,
+                 address: Optional[Union[IPv4Address, str]] = None,
+                 endpoint: Optional[Union[IPv4Address, str]] = None) -> BasePeer:
         if isinstance(address, str):
             address = IPv4Address(address)
         address = self.pool.allocate_address(address)
@@ -151,6 +153,7 @@ class VPN:
             data['peers'].append(peer_data)
         return json.dumps(data)
 
+
     @classmethod
     def from_json(cls, json_str: str) -> 'VPN':
         data = json.loads(json_str)
@@ -164,6 +167,30 @@ class VPN:
             else:
                 address = IPv4Address(peer_data['address'])
                 vpn.add_peer(address=address)
+        return vpn
+
+
+    def to_config(self) -> Dict[str, Any]:
+        config = {
+            'network': str(self.pool.network),
+            'peers': [],
+        }
+        for peer in self.peers:
+            peer_config = {'address': str(peer.address)}
+            if isinstance(peer, Router):
+                peer_config['endpoint'] = str(peer.endpoint)
+            config['peers'].append(peer_config)
+        return config
+
+
+    @classmethod
+    def from_config(cls, config: Dict[str, Any]) -> 'VPN':
+        network = IPv4Network(config['network'])
+        vpn = cls(network=network)
+        for peer_config in config['peers']:
+            address = IPv4Address(peer_config['address'])
+            endpoint = peer_config.get('endpoint')
+            vpn.add_peer(address=address, endpoint=endpoint)
         return vpn
 
 
