@@ -85,10 +85,13 @@ class Pool:
 
 @dataclass
 class VPN:
-    pool: Pool
     peers: List[BasePeer] = field(default_factory=list)
+    pool: Pool
 
     def __init__(self, network: Optional[Union[IPv4Network, str]] = None, endpoint: Optional[str] = None) -> None:
+        '''Initializes a new VPN object.
+        If a network is specified, it creates a pool with that network.
+        If an endpoint is specified, it adds a peer with that endpoint.'''
         if isinstance(network, str):
             network = IPv4Network(network)
         self.pool = Pool(network)
@@ -97,6 +100,7 @@ class VPN:
             self.add_peer(endpoint=endpoint)
 
     def __repr__(self) -> str:
+        '''Returns a string representation of the VPN object.'''
         return (
             f"VPN(network={self.pool.network}, endpoints={self.endpoints}, "
             f"left_in_pool={self.pool.unallocated_addresses_left}, peers={self.peers})"
@@ -104,9 +108,11 @@ class VPN:
 
     @property
     def endpoints(self) -> List[str]:
+        '''Returns a list of endpoint addresses for all the router peers in the VPN.'''
         return [str(p.endpoint) for p in self.peers if isinstance(p, Router) and p.endpoint]
 
     def add_peer(self, address: Optional[Union[IPv4Address, str]] = None, endpoint: Optional[IPv4Address] = None) -> BasePeer:
+        '''Adds a new peer to the VPN. If an address is specified, it allocates that address from the VPN's pool. If an endpoint is specified, it creates a router peer with that endpoint.'''
         if isinstance(address, str):
             address = IPv4Address(address)
         address = self.pool.allocate_address(address)
@@ -120,18 +126,22 @@ class VPN:
             return peer
 
     def remove_peer(self, address: Optional[IPv4Address] = None) -> None:
+        '''Removes a peer from the VPN. If an address is specified, it removes the peer with that address. Otherwise, it removes the last peer in the list.'''
         try:
             if address is None:
                 peer = self.peers.pop()
                 self.pool.unallocate_address(peer.address)
             else:
-                peer = next(p for p in self.peers if p.address == address)
-                self.peers.remove(peer)
-                self.pool.unallocate_address(peer.address)
+                if isinstance(address, str):
+                    address = IPv4Address(address)
+                    peer = next(p for p in self.peers if p.address == address)
+                    self.peers.remove(peer)
+                    self.pool.unallocate_address(peer.address)
         except StopIteration:
             pass
 
     def to_json(self) -> str:
+        '''Returns a JSON string representation of the VPN object.'''
         data = {
             'network': str(self.pool.network),
             'peers': [],
@@ -154,6 +164,7 @@ class VPN:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'VPN':
+        '''Creates a new VPN object from a JSON string.'''
         data = json.loads(json_str)
         network = data.get('network')
         vpn = cls(network=network)
@@ -169,6 +180,7 @@ class VPN:
 
 
     def print_config(self, file_path: Optional[str] = None) -> Optional[str]:
+        '''Prints the VPN configuration in INI file format. If a file_path is specified, it writes the configuration to that file instead.'''
         config = ConfigParser()
         config.add_section('VPN')
         config.set('VPN', 'network', str(self.pool.network))
@@ -188,6 +200,7 @@ class VPN:
 
     @classmethod
     def from_config(cls, config_str: str) -> 'VPN':
+        '''Creates a new VPN object from an INI file configuration string.'''
         config = ConfigParser()
         config.read_string(config_str)
         network = IPv4Network(config.get('VPN', 'network'))
