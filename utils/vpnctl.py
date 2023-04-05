@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 # This funky stuff is gonna actualy provide
-#   the tools for address space dynamic distribution
-#   among the members of a very private net
+# the tools for address space dynamic distribution
+# among the members of a very private net
 
 import json
 
@@ -85,8 +85,8 @@ class Pool:
 
 @dataclass
 class VPN:
-    peers: List[BasePeer] = field(default_factory=list)
     pool: Pool
+    peers: List[BasePeer] = field(default_factory=list)
 
     def __init__(self, network: Optional[Union[IPv4Network, str]] = None, endpoint: Optional[str] = None) -> None:
         '''Initializes a new VPN object.
@@ -266,11 +266,11 @@ class VPNManager:
 
 def main():
 
-    vpn = VPN('10.0.0.0/23', '1.1.1.1')
+    vpn = VPN('10.0.0.0/28', '1.1.1.1')
     vpn.add_peer(endpoint='12.23.34.45')
 
     # print('  ... Testing large allocations')
-    for _ in range(16):
+    for _ in range(4):
         vpn.add_peer()
 
     vpn_clone = VPN.from_json(vpn.to_json())
