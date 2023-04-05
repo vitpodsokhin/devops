@@ -88,7 +88,10 @@ class VPN:
     pool: Pool
     peers: List[BasePeer] = field(default_factory=list)
 
-    def __init__(self, network: Optional[Union[IPv4Network, str]] = None, endpoint: Optional[str] = None) -> None:
+    def __init__(
+            self, network: Optional[Union[IPv4Network, str]] = None,
+            endpoint: Optional[str] = None
+        ) -> None:
         '''Initializes a new VPN object.
         If a network is specified, it creates a pool with that network.
         If an endpoint is specified, it adds a peer with that endpoint.'''
@@ -111,8 +114,14 @@ class VPN:
         '''Returns a list of endpoint addresses for all the router peers in the VPN.'''
         return [str(p.endpoint) for p in self.peers if isinstance(p, Router) and p.endpoint]
 
-    def add_peer(self, address: Optional[Union[IPv4Address, str]] = None, endpoint: Optional[IPv4Address] = None) -> BasePeer:
-        '''Adds a new peer to the VPN. If an address is specified, it allocates that address from the VPN's pool. If an endpoint is specified, it creates a router peer with that endpoint.'''
+    def add_peer(
+            self,
+            address: Optional[Union[IPv4Address, str]] = None,
+            endpoint: Optional[IPv4Address] = None
+        ) -> BasePeer:
+        '''Adds a new peer to the VPN.
+        If an address is specified, it allocates that address from the VPN's pool.
+        If an endpoint is specified, it creates a router peer with that endpoint.'''
         if isinstance(address, str):
             address = IPv4Address(address)
         address = self.pool.allocate_address(address)
@@ -126,7 +135,9 @@ class VPN:
             return peer
 
     def remove_peer(self, address: Optional[IPv4Address] = None) -> None:
-        '''Removes a peer from the VPN. If an address is specified, it removes the peer with that address. Otherwise, it removes the last peer in the list.'''
+        '''Removes a peer from the VPN.
+        If an address is specified, it removes the peer with that address.
+        Otherwise, it removes the last peer in the list.'''
         try:
             if address is None:
                 peer = self.peers.pop()
@@ -180,7 +191,8 @@ class VPN:
 
 
     def print_config(self, file_path: Optional[str] = None) -> Optional[str]:
-        '''Prints the VPN configuration in INI file format. If a file_path is specified, it writes the configuration to that file instead.'''
+        '''Prints the VPN configuration in INI file format.
+        If a file_path is specified, it writes the configuration to that file instead.'''
         config = ConfigParser()
         config.add_section('VPN')
         config.set('VPN', 'network', str(self.pool.network))
@@ -274,7 +286,7 @@ def main():
         vpn.add_peer()
 
     vpn_clone = VPN.from_json(vpn.to_json())
-    print(vpn_clone.to_json())
+    print(vpn_clone.print_config())
 
 if __name__ == '__main__':
     main()
