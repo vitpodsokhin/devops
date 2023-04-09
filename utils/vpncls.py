@@ -1,8 +1,6 @@
-from __future__ import annotations
+# vpncls.py
 
-# This funky stuff is gonna actualy provide
-# the tools for address space dynamic distribution
-# among the members of a very private net
+from __future__ import annotations
 
 import json
 

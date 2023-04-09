@@ -1,6 +1,6 @@
 # DevOps Git Repository
 
-This repository contains a collection of bash scripts and utilities for system administration and DevOps tasks. The repository is licensed under the MIT License.
+This repository contains a collection of bash scripts and utilities for system administration and DevOps tasks.
 
 ## Contents
 
@@ -8,7 +8,8 @@ The repository currently includes the following scripts:
 
 - `minago.sh`: A script to find files modified in the last N minutes.
 - `gitctl.sh`: A script to update all Git repositories in the specified directories and their subdirectories.
-- `vpnctl.py`: A Python script to control a VPN connection. It provides a simple command-line interface for managing configurations virtual private networks.
+- `gitctl.py`: An attempt to rewrite it in python.
+- `vpncls.py`: A Python class to build an architecture for virtual private networks. It provides a base class definitions for implementing VPN administrative interfacess and configuration sets.
 
 ## Requirements
 
@@ -16,7 +17,7 @@ The scripts in this repository require the following:
 
 - Bash shell
 - Git (for `gitctl.sh`)
-- Python3 (for `vpnctl.py`)
+- Python3 (for `vpncls.py`)
 
 ## Usage
 
