@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import json
 
+from dataclasses import dataclass, field
+from typing import List, Optional, Union
+from ipaddress import IPv4Address, IPv4Network
+
 from io import StringIO
 from configparser import ConfigParser
-from dataclasses import dataclass, field
-from ipaddress import IPv4Address, IPv4Network
-from typing import List, Optional, Union
-
 
 @dataclass
 class BasePeer:
@@ -20,11 +20,11 @@ class BasePeer:
 
     def __repr__(self) -> str:
         if self.is_router:
-            return f"Router(address='{self.address}', endpoint='{self.endpoint}', vpn={self.vpn.pool.network.exploded})"
+            return f"Router(address='{self.address}', endpoint='{self.endpoint}', vpn={self.vpn})"
         elif self.vpn:
             return f"Peer(address='{self.address}')"
         else:
-            return f"Peer(address='{self.address}', vpn={self.vpn.pool.network.exploded})"
+            return f"Peer(address='{self.address}', vpn={self.vpn})"
 
     def __str__(self) -> str:
         if self.is_router:
@@ -35,7 +35,9 @@ class BasePeer:
 
 @dataclass
 class Peer(BasePeer):
-    pass
+
+    def __post_init__(self) -> None:
+        self.is_router = False
 
 
 @dataclass
@@ -50,6 +52,10 @@ class Router(BasePeer):
         self.is_router = True
 
 
+from ipaddress import IPv4Address, IPv4Network
+from typing import List, Optional
+from dataclasses import dataclass, field
+
 @dataclass
 class Pool:
     network: IPv4Network
@@ -58,20 +64,36 @@ class Pool:
     def __post_init__(self):
         self.network = IPv4Network(self.network)
 
+    def allocate_network(self, network: Optional[IPv4Network] = None) -> IPv4Network:
+        # If no network is specified, allocate the whole network
+        if network is None:
+            self.allocated_addresses.append(self.network.network_address)
+            return self.network
+
+        # Find a suitable subnet
+        for subnet in self.network.subnets():
+            if subnet.prefixlen >= network.prefixlen and subnet not in self.allocated_addresses:
+                self.allocated_addresses.append(subnet)
+                return subnet
+
+        # Raise an error if no suitable subnet is found
+        raise ValueError("Error: No available unallocated subnets in the pool.")
+
     def allocate_address(self, address: Optional[IPv4Address] = None) -> IPv4Address:
         if address is not None and address in self.allocated_addresses:
             raise ValueError(f"Error: Address {address} is already allocated.")
 
-        # Loop through available addresses until an unallocated one is found
-        for host in self.network.hosts().__iter__():
+        # if address is not None and address in self.network.:
+        #     raise ValueError(f"Error: Address {address} is already allocated.")
+
+        for host in iter(self.network.hosts()):
             if host not in self.allocated_addresses:
                 self.allocated_addresses.append(host)
                 return host
 
-        # Raise an error if no unallocated addresses are available
         raise ValueError("Error: No available unallocated addresses in the pool.")
 
-    def unallocate_address(self, address: IPv4Address) -> None:
+    def unallocate_address(self, address: IPv4Address = None) -> None:
         if address not in self.allocated_addresses:
             raise ValueError(f"Error: Address {address} is not allocated.")
         self.allocated_addresses.remove(address)
@@ -201,7 +223,7 @@ class VPN:
             if isinstance(peer, Router):
                 config.set(section_name, 'endpoint', str(peer.endpoint))
         if file_path is not None:
-            with open(file_path, 'w') as f:
+            with open(file_path, 'w', encoding='utf-8') as f:
                 config.write(f)
         else:
             output = StringIO()
@@ -225,6 +247,8 @@ class VPN:
 
 def main():
 
+    #TODO implement the nessesary to handle and process the following user input:
+    # > vpn = VPN('10.0.0.0/20', '1.1.1.1, 12.23.34.45:53, entpoint.to, endpoint.to:443', users=50)
     vpn = VPN('10.0.0.0/28', '1.1.1.1')
     vpn.add_peer(endpoint='12.23.34.45')
 

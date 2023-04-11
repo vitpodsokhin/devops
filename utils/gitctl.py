@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+#TODO implement `git ls-remote --size <repository_url>` before doing anything! )
 
 # USE IT AT YOUR OWN RISK. Work on error handling in progress.
 

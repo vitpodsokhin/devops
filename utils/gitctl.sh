@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#TODO implement `git ls-remote --size <repository_url>` before doing anything! )
 
 print_usage() {
     printf "Usage: %s [directory1] [directory2] ...\n\n" "$0"
